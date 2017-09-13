@@ -1,211 +1,203 @@
-/**
- * Created by kienpham on 7/20/17.
- */
+var board,
+    game = new Chess();
 
-$(document).ready(function () {
-    var board,
-        game = new Chess();
+/*The "AI" part starts here */
 
-    /**
-     * init board
-     */
-    var removeGreySquares = function () {
-        $('#board .square-55d63').css('background', '');
-    };
+var minimaxRoot = function (depth, game, isMaximisingPlayer) {
 
-    var greySquare = function (square) {
-        var squareEl = $('#board .square-' + square);
+    var bestMoveFound = null;
+    // $.ajax({
+    //     url: 'http://chess.local/chess/getCache',
+    //     data: {key: game.fen()},
+    //     async: false
+    // }).done(function (data) {
+    //     bestMoveFound = data;
+    // });
+    // if (bestMoveFound !== null){
+    //     return bestMoveFound;
+    // }
+    var newGameMoves = game.moves();
+    var bestMove = -9999;
 
-        var background = '#a9a9a9';
-        if (squareEl.hasClass('black-3c85d') === true) {
-            background = '#696969';
+    for (var i = 0; i < newGameMoves.length; i++) {
+        var newGameMove = newGameMoves[i];
+        game.move(newGameMove);
+        var value = minimax(depth - 1, game, -10000, 10000, !isMaximisingPlayer);
+        game.undo();
+        if (value >= bestMove) {
+            bestMove = value;
+            bestMoveFound = newGameMove;
         }
+    }
+    // $.ajax({
+    //     url: 'http://chess.local/chess',
+    //     data: {key: game.fen(), value: bestMoveFound}
+    // });
+    return bestMoveFound;
+};
 
-        squareEl.css('background', background);
-    };
+var minimax = function (depth, game, alpha, beta, isMaximisingPlayer) {
+    positionCount++;
+    if (depth === 0) {
+        return -evaluateBoard(game.board());
+    }
 
-    var onDragStart = function (source, piece) {
-        // do not pick up pieces if the game is over
-        // or if it's not that side's turn
-        if (game.game_over() === true ||
-            (game.turn() === 'w' && piece.search(/^b/) !== -1) ||
-            (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
-            return false;
-        }
-    };
+    var newGameMoves = game.moves();
 
-    var onDrop = function (source, target) {
-        removeGreySquares();
-
-        // see if the move is legal
-        var move = game.move({
-            from: source,
-            to: target,
-            promotion: 'q' // NOTE: always promote to a queen for example simplicity
-        });
-
-        // illegal move
-        if (move === null) return 'snapback';
-
-        // call AI
-        makeBestMove();
-    };
-
-    var onMouseoverSquare = function (square, piece) {
-        // get list of possible moves for this square
-        var moves = game.moves({
-            square: square,
-            verbose: true
-        });
-
-        // exit if there are no moves available for this square
-        if (moves.length === 0) return;
-
-        // highlight the square they moused over
-        greySquare(square);
-
-        // highlight the possible squares for this piece
-        for (var i = 0; i < moves.length; i++) {
-            greySquare(moves[i].to);
-        }
-    };
-
-    var onMouseoutSquare = function (square, piece) {
-        removeGreySquares();
-    };
-
-    var onSnapEnd = function () {
-        board.position(game.fen());
-    };
-
-    var cfg = {
-        draggable: true,
-        position: 'start',
-        onDragStart: onDragStart,
-        onDrop: onDrop,
-        onMouseoutSquare: onMouseoutSquare,
-        onMouseoverSquare: onMouseoverSquare,
-        onSnapEnd: onSnapEnd
-    };
-
-    /**
-     * AI process
-     */
-
-    var makeBestMove = function () {
-        // exit if the game is over
-        if (game.game_over() === true ||
-            game.in_draw() === true ||
-            game.moves().length === 0) {
-            alert('game over');
-            return;
-        }
-        var nextMove = getBestMove();
-        console.log(nextMove);
-        game.move(nextMove);
-        board.position(game.fen());
-        // next turn
-        // window.setTimeout(makeBestMove, 500);
-
-    };
-
-    var getBestMove = function () {
-        var bestValue = -99999;
-        var bestMove = null;
-        var nextMoves = game.moves();
-        for (var i = 0; i < nextMoves.length; i++) {
-            game.move(nextMoves[i]);
-            var boardValue = minimax(2, game, true);
+    if (isMaximisingPlayer) {
+        var bestMove = -9999;
+        for (var i = 0; i < newGameMoves.length; i++) {
+            game.move(newGameMoves[i]);
+            bestMove = Math.max(bestMove, minimax(depth - 1, game, alpha, beta, !isMaximisingPlayer));
             game.undo();
-            if (boardValue > bestValue) {
-                bestValue = boardValue;
-                bestMove = nextMoves[i];
+            alpha = Math.max(alpha, bestMove);
+            if (beta <= alpha) {
+                return bestMove;
             }
         }
         return bestMove;
-    };
-
-    var minimax = function (depth, game, alpha, beta, isMaximizingPlayer) {
-        if (depth == 0 || game.game_over()) {
-            return evaluateBoard(game.board());
-        }
-        var nextMoves = game.moves();
-
-        if ( isMaximizingPlayer ) {
-            var bestValue = -99999;
-            for (var i = 0; i < nextMoves.length; i++) {
-                game.move(nextMoves[i]);
-                bestValue = Math.max(bestValue, minimax(depth-1, game, alpha, beta, !isMaximizingPlayer));
-                game.undo();
-                alpha = Math.max(alpha, bestValue);
-                if (beta <= alpha){
-                    return bestValue
-                }
+    } else {
+        var bestMove = 9999;
+        for (var i = 0; i < newGameMoves.length; i++) {
+            game.move(newGameMoves[i]);
+            bestMove = Math.min(bestMove, minimax(depth - 1, game, alpha, beta, !isMaximisingPlayer));
+            game.undo();
+            beta = Math.min(beta, bestMove);
+            if (beta <= alpha) {
+                return bestMove;
             }
-            return bestValue;
-        } else {
-            var bestValue = 99999;
-            for (var i = 0; i < nextMoves.length; i++) {
-                game.move(nextMoves[i]);
-                bestValue = Math.min(bestValue, minimax(depth-1, game, alpha, beta, !isMaximizingPlayer));
-                game.undo();
-                beta = Math.min(beta, bestValue);
-                if (beta <= alpha) {
-                    return bestValue;
-                }
-            }
-            return bestValue;
         }
-    };
-    /**
-     * get random move
-     * @return {*}
-     */
-    var makeRandom = function () {
-        var possibleMoves = game.moves();
-        var randomIndex = Math.floor(Math.random() * possibleMoves.length);
-        return possibleMoves[randomIndex];
-    };
+        return bestMove;
+    }
+};
 
-    /**
-     * Tính tổng trọng số trên bàn cờ
-     * @param  board
-     * @return {number}
-     */
-    var evaluateBoard = function (board) {
-        var evaluate = 0;
-        for (var i = 0; i < 8; i++)
-            for (var j = 0; j < 8; j++) {
-                evaluate += getChessmanValue(board[i][j])
-            }
-
-        return evaluate;
-    };
-
-    /**
-     * lấy giá trị của ô cờ
-     * @param cell
-     * @return {number}
-     */
-    var getChessmanValue = function (cell) {
-        if (cell === null) return 0;
-        var abs = cell.color === 'w' ? -1 : 1;
-        switch (cell.type) {
-            case 'p' :
-                return 10 * abs;
-            case 'n' :
-            case 'b' :
-                return 30 * abs;
-            case 'r' :
-                return 50 * abs;
-            case 'q' :
-                return 90 * abs;
-            case 'k' :
-                return 900 * abs;
+var evaluateBoard = function (board) {
+    var totalEvaluation = 0;
+    for (var i = 0; i < 8; i++) {
+        for (var j = 0; j < 8; j++) {
+            totalEvaluation = totalEvaluation + getPieceValue(board[i][j], i, j);
         }
+    }
+    return totalEvaluation;
+};
+
+
+var getPieceValue = function (piece, x, y) {
+    if (piece === null) {
+        return 0;
+    }
+    var getAbsoluteValue = function (piece) {
+        if (piece.type === 'p') {
+            return 10;
+        } else if (piece.type === 'r') {
+            return 50;
+        } else if (piece.type === 'n') {
+            return 30;
+        } else if (piece.type === 'b') {
+            return 30;
+        } else if (piece.type === 'q') {
+            return 90;
+        } else if (piece.type === 'k') {
+            return 900;
+        }
+        throw "Unknown piece type: " + piece.type;
     };
 
-    board = ChessBoard('board', cfg);
-    // window.setTimeout(makeBestMove, 500);
+    var absoluteValue = getAbsoluteValue(piece);
+    return piece.color === 'w' ? absoluteValue : -absoluteValue;
+};
 
-});
+
+/* board visualization and games state handling */
+
+var onDragStart = function (source, piece, position, orientation) {
+    if (game.in_checkmate() === true || game.in_draw() === true ||
+        piece.search(/^b/) !== -1) {
+        return false;
+    }
+};
+
+var makeBestMove = function () {
+    var bestMove = getBestMove(game);
+    game.move(bestMove);
+    board.position(game.fen());
+    if (game.game_over()) {
+        alert('Game over');
+    }
+};
+
+
+var getBestMove = function (game) {
+    if (game.game_over()) {
+        alert('Game over');
+    }
+
+    var bestMove = minimaxRoot(3, game, true);
+
+    return bestMove;
+};
+
+var onDrop = function (source, target) {
+
+    var move = game.move({
+        from: source,
+        to: target,
+        promotion: 'q'
+    });
+
+    removeGreySquares();
+    if (move === null) {
+        return 'snapback';
+    }
+
+    window.setTimeout(makeBestMove, 250);
+};
+
+var onSnapEnd = function () {
+    board.position(game.fen());
+};
+
+var onMouseoverSquare = function (square, piece) {
+    var moves = game.moves({
+        square: square,
+        verbose: true
+    });
+
+    if (moves.length === 0) return;
+
+    greySquare(square);
+
+    for (var i = 0; i < moves.length; i++) {
+        greySquare(moves[i].to);
+    }
+};
+
+var onMouseoutSquare = function (square, piece) {
+    removeGreySquares();
+};
+
+var removeGreySquares = function () {
+    $('#board .square-55d63').css('background', '');
+};
+
+var greySquare = function (square) {
+    var squareEl = $('#board .square-' + square);
+
+    var background = '#a9a9a9';
+    if (squareEl.hasClass('black-3c85d') === true) {
+        background = '#696969';
+    }
+
+    squareEl.css('background', background);
+};
+
+var cfg = {
+    draggable: true,
+    position: 'start',
+    onDragStart: onDragStart,
+    onDrop: onDrop,
+    onMouseoutSquare: onMouseoutSquare,
+    onMouseoverSquare: onMouseoverSquare,
+    onSnapEnd: onSnapEnd
+};
+board = ChessBoard('board', cfg);
