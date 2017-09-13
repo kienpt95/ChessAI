@@ -3,21 +3,22 @@ var board,
 
 /*The "AI" part starts here */
 
+
 var minimaxRoot = function (depth, game, isMaximisingPlayer) {
 
-    var bestMoveFound = null;
-    // $.ajax({
-    //     url: 'http://chess.local/chess/getCache',
-    //     data: {key: game.fen()},
-    //     async: false
-    // }).done(function (data) {
-    //     bestMoveFound = data;
-    // });
-    // if (bestMoveFound !== null){
-    //     return bestMoveFound;
-    // }
     var newGameMoves = game.moves();
     var bestMove = -9999;
+    var bestMoveFound = null;
+    $.ajax({
+        url: 'https://chess-cache.herokuapp.com/chess/getCache',
+        data: {key: game.fen()},
+        async: false
+    }).done(function (data) {
+        bestMoveFound = data;
+    });
+    if (bestMoveFound.length) {
+        return bestMoveFound;
+    }
 
     for (var i = 0; i < newGameMoves.length; i++) {
         var newGameMove = newGameMoves[i];
@@ -29,15 +30,15 @@ var minimaxRoot = function (depth, game, isMaximisingPlayer) {
             bestMoveFound = newGameMove;
         }
     }
-    // $.ajax({
-    //     url: 'http://chess.local/chess',
-    //     data: {key: game.fen(), value: bestMoveFound}
-    // });
+    $.ajax({
+        url: 'https://chess-cache.herokuapp.com/chess',
+        data: {key: game.fen(), value: bestMoveFound}
+    });
     return bestMoveFound;
 };
 
 var minimax = function (depth, game, alpha, beta, isMaximisingPlayer) {
-    positionCount++;
+
     if (depth === 0) {
         return -evaluateBoard(game.board());
     }
@@ -118,21 +119,27 @@ var onDragStart = function (source, piece, position, orientation) {
 };
 
 var makeBestMove = function () {
+    if (game.game_over()) {
+        alert('Game over');
+        return;
+    }
     var bestMove = getBestMove(game);
     game.move(bestMove);
     board.position(game.fen());
-    if (game.game_over()) {
-        alert('Game over');
-    }
 };
 
+var makeRandom = function () {
+    var possibleMoves = game.moves();
+    var randomIndex = Math.floor(Math.random() * possibleMoves.length);
+    return possibleMoves[randomIndex];
+};
 
 var getBestMove = function (game) {
     if (game.game_over()) {
         alert('Game over');
     }
 
-    var bestMove = minimaxRoot(3, game, true);
+    var bestMove = minimaxRoot(4, game, true);
 
     return bestMove;
 };
@@ -149,8 +156,8 @@ var onDrop = function (source, target) {
     if (move === null) {
         return 'snapback';
     }
-
     window.setTimeout(makeBestMove, 250);
+
 };
 
 var onSnapEnd = function () {
