@@ -10,13 +10,13 @@ var minimaxRoot = function (depth, game, isMaximisingPlayer) {
     var bestMove = -9999;
     var bestMoveFound = null;
     $.ajax({
-        url: 'https://chess-cache.herokuapp.com/chess/getCache',
+        url: 'http://chess.local/chess/getCache',
         data: {key: game.fen()},
         async: false
     }).done(function (data) {
         bestMoveFound = data;
     });
-    if (bestMoveFound.length) {
+    if (bestMoveFound !== null) {
         return bestMoveFound;
     }
 
@@ -31,7 +31,7 @@ var minimaxRoot = function (depth, game, isMaximisingPlayer) {
         }
     }
     $.ajax({
-        url: 'https://chess-cache.herokuapp.com/chess',
+        url: 'http://chess.local/chess',
         data: {key: game.fen(), value: bestMoveFound}
     });
     return bestMoveFound;
