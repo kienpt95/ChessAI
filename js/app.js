@@ -139,7 +139,7 @@ var getBestMove = function (game) {
         alert('Game over');
     }
 
-    var bestMove = minimaxRoot(4, game, true);
+    var bestMove = minimaxRoot(3, game, true);
 
     return bestMove;
 };
